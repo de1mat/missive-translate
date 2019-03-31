@@ -6,15 +6,15 @@ One of the many nice features Missive allows is "Custom Integrations" - effectiv
 
 I develop mobile apps and receive emails from users all over the world - many not in English. So ... this is my attempt at a quick "hack" to enable a way of translating these emails right from inside Missive. And it works great!
 
-![Demo email in Japanese translated using plugin](missive-translate-demo.gif) 
+![Demo emails in Japanese translated using plugin](missive-translate-demo.gif) 
 
 ## How the Integration Works
 
-The Plugin will load all the required JS and CSS and default to showing the "Translate Email" button. You will need to press this "Translate Email" button to trigger the translation. It was designed this way so that unncessary API calls are not made to the Google Translate API.
+The Plugin will load all the required JS and CSS and default to showing the "Translate" button. You will need to press this "Translate" button to trigger the translation. It was designed this way so that unncessary API calls are not made to the Google Translate API.
 
-When you press the "Translate Email" button, it will use the [Google Cloud Translation API](https://cloud.google.com/translate/docs/reference/rest) to translate both the email subject line and the email body of the most recent message in the email thread. 
+When you press the "Translate" button, it will use the [Google Cloud Translation API](https://cloud.google.com/translate/docs/reference/rest) to translate both the email subject line and the email body of the most recent message in the email thread. 
 
-> At the moment there is no way to go back through a series of emails in a conversation thread and manually pick which one to translate - it will always translate the last email.
+You can also translate each email in the message thread via the action menu, see demo above.
 
 Once the translation is complete you will see:
 
@@ -40,6 +40,7 @@ Once you have the API key, follow these steps.
 2. Open Missive > Settings > Integrations > Add Custom Integration.
 3. Enter in the custom name, eg: "Google Translate".
 4. Enter in the URL from step 1, plus the API key (see example below).
+5. Optionally add an image for the integration.
 
 The minimum URL for the integration is:
   
@@ -67,18 +68,18 @@ To customise the strings used, these can be overridden in the url.
 |        key      |  default string     |
 |-----------------|---------------------|
 |`strLoading`     | Loading...          |
-|`strTranslate`   | Translate Email     |
+|`strTranslate`   | Translate           |
 |`strTranslating` | Translating...      |
 |`strConversation`| Add to Conversation |
 |`strReply`       | Reply               |
 
-Here is a useless example where the Translate button label is changed from "Translate Email" to "Translate Now":
+Here is an example where the Translate button label is changed from "Translate" to "Translate Now":
 
   `https://example.com/missive/translator.htm?strTranslate=Translate%20Now&key=YOUR_API_KEY_FROM_GOOGLE`
   
 ---
   
-The code is not the most beautiful, but it was fun for me to experiment with, and it works really well. 
+The code is not perfect, but it was fun for me to experiment with, and it works really well. 
 
 I imagine that Missive will release their own official Google Translate plugin one day, but in the meantime I hope this proves useful to you as well :)
 
