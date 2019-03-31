@@ -1,0 +1,198 @@
+<html lang="en" xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+  <title>Google Translate Integration for Missive, by Matthew Delmarter</title>
+  <script src="https://integrations.missiveapp.com/missive.js"></script>
+  <link href="https://integrations.missiveapp.com/missive.css" rel="stylesheet">
+
+  <style>
+    .translator-heading {
+      background-color: var(--missive-light-active-color);
+    }
+    .translator-textblock {
+      background-color: var(--missive-conversation-list-background-color);
+    }
+    #translated {
+      display: none;
+    }
+    #language {
+      border: 1px solid var(--missive-blue-color);
+      border-radius: 3px;
+      min-width: 2.1em;
+      padding: 2px 5px;
+      font-size: 80%;
+      margin-left: 9px;
+      background-color: var(--missive-light-blue-color);
+      color: var(--missive-blue-color);
+    }
+    #error {
+      color: var(--missive-red-color);
+    }
+    main {
+      overflow: auto!important;
+      height: 100vh;
+    }
+  </style>
+</head>
+
+<body>
+
+<main class="padding content-grow content-vertical">
+  <div id="translate" class="columns-center padding-small">
+    <div id="btn-translate" class="button">Translate Email</div>
+  </div>
+  <div id="translated">
+    <div class="box">
+      <div class="box-header text-600 translator-heading"><span id="subject"></span><span id="lang"></span></div>
+      <div id="message" class="box-content text-normal translator-textblock"></div>
+    </div>
+    <div class="columns-center padding-medium">
+      <div id="btn-conversation" class="button-token margin-xsmall">Add to Conversation</div>
+      <div id="btn-reply" class="button-token margin-xsmall">Reply</div>
+    </div>
+  </div>
+  <div id="error" class="align-center padding-small text-label text-large"></div>
+</main>
+
+<script src="https://code.jquery.com/jquery-3.3.1.min.js" integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8=" crossorigin="anonymous"></script>
+<script type="text/javascript">
+
+  // the current message object from Missive
+  var message;
+
+  // the language returned by Google
+  var langDetected = false;
+
+  // work with the url query string
+  var urlParams = new URLSearchParams(window.location.search);
+
+  // you MUST set the ?key= in the url
+  var apiKey = (urlParams.has('key')) ? urlParams.get('key') : showError('Error: Missing Translate API Key');
+
+  // configure google translate options via the url
+  var langSource = (urlParams.has('sl')) ? urlParams.get('sl') : '';   // leave blank to auto-detect lang
+  var langTarget = (urlParams.has('tl')) ? urlParams.get('tl') : 'en'; // default to english
+
+  // the strings can be localised via the url
+  var strLoading      = (urlParams.has('strLoading')) ? urlParams.get('strLoading') : 'Loading...';
+  var strTranslate    = (urlParams.has('strTranslate')) ? urlParams.get('strTranslate') : 'Translate Email';
+  var strTranslating  = (urlParams.has('strTranslating')) ? urlParams.get('strTranslating') : 'Translating...';
+  var strConversation = (urlParams.has('strConversation')) ? urlParams.get('strConversation') : 'Add to Conversation';
+  var strReply        = (urlParams.has('strReply')) ? urlParams.get('strReply') : 'Reply';
+
+  // array of all languages (English) - will be overridden if tl != "en"
+  var languages = [{"language":"af","name":"Afrikaans"},{"language":"sq","name":"Albanian"},{"language":"am","name":"Amharic"},{"language":"ar","name":"Arabic"},{"language":"hy","name":"Armenian"},{"language":"az","name":"Azerbaijani"},{"language":"eu","name":"Basque"},{"language":"be","name":"Belarusian"},{"language":"bn","name":"Bengali"},{"language":"bs","name":"Bosnian"},{"language":"bg","name":"Bulgarian"},{"language":"ca","name":"Catalan"},{"language":"ceb","name":"Cebuano"},{"language":"ny","name":"Chichewa"},{"language":"zh","name":"Chinese (Simplified)"},{"language":"zh-TW","name":"Chinese (Traditional)"},{"language":"co","name":"Corsican"},{"language":"hr","name":"Croatian"},{"language":"cs","name":"Czech"},{"language":"da","name":"Danish"},{"language":"nl","name":"Dutch"},{"language":"en","name":"English"},{"language":"eo","name":"Esperanto"},{"language":"et","name":"Estonian"},{"language":"tl","name":"Filipino"},{"language":"fi","name":"Finnish"},{"language":"fr","name":"French"},{"language":"fy","name":"Frisian"},{"language":"gl","name":"Galician"},{"language":"ka","name":"Georgian"},{"language":"de","name":"German"},{"language":"el","name":"Greek"},{"language":"gu","name":"Gujarati"},{"language":"ht","name":"Haitian Creole"},{"language":"ha","name":"Hausa"},{"language":"haw","name":"Hawaiian"},{"language":"iw","name":"Hebrew"},{"language":"hi","name":"Hindi"},{"language":"hmn","name":"Hmong"},{"language":"hu","name":"Hungarian"},{"language":"is","name":"Icelandic"},{"language":"ig","name":"Igbo"},{"language":"id","name":"Indonesian"},{"language":"ga","name":"Irish"},{"language":"it","name":"Italian"},{"language":"ja","name":"Japanese"},{"language":"jw","name":"Javanese"},{"language":"kn","name":"Kannada"},{"language":"kk","name":"Kazakh"},{"language":"km","name":"Khmer"},{"language":"ko","name":"Korean"},{"language":"ku","name":"Kurdish (Kurmanji)"},{"language":"ky","name":"Kyrgyz"},{"language":"lo","name":"Lao"},{"language":"la","name":"Latin"},{"language":"lv","name":"Latvian"},{"language":"lt","name":"Lithuanian"},{"language":"lb","name":"Luxembourgish"},{"language":"mk","name":"Macedonian"},{"language":"mg","name":"Malagasy"},{"language":"ms","name":"Malay"},{"language":"ml","name":"Malayalam"},{"language":"mt","name":"Maltese"},{"language":"mi","name":"Maori"},{"language":"mr","name":"Marathi"},{"language":"mn","name":"Mongolian"},{"language":"my","name":"Myanmar (Burmese)"},{"language":"ne","name":"Nepali"},{"language":"no","name":"Norwegian"},{"language":"ps","name":"Pashto"},{"language":"fa","name":"Persian"},{"language":"pl","name":"Polish"},{"language":"pt","name":"Portuguese"},{"language":"pa","name":"Punjabi"},{"language":"ro","name":"Romanian"},{"language":"ru","name":"Russian"},{"language":"sm","name":"Samoan"},{"language":"gd","name":"Scots Gaelic"},{"language":"sr","name":"Serbian"},{"language":"st","name":"Sesotho"},{"language":"sn","name":"Shona"},{"language":"sd","name":"Sindhi"},{"language":"si","name":"Sinhala"},{"language":"sk","name":"Slovak"},{"language":"sl","name":"Slovenian"},{"language":"so","name":"Somali"},{"language":"es","name":"Spanish"},{"language":"su","name":"Sundanese"},{"language":"sw","name":"Swahili"},{"language":"sv","name":"Swedish"},{"language":"tg","name":"Tajik"},{"language":"ta","name":"Tamil"},{"language":"te","name":"Telugu"},{"language":"th","name":"Thai"},{"language":"tr","name":"Turkish"},{"language":"uk","name":"Ukrainian"},{"language":"ur","name":"Urdu"},{"language":"uz","name":"Uzbek"},{"language":"vi","name":"Vietnamese"},{"language":"cy","name":"Welsh"},{"language":"xh","name":"Xhosa"},{"language":"yi","name":"Yiddish"},{"language":"yo","name":"Yoruba"},{"language":"zu","name":"Zulu"}];
+
+  // triggered each time a new email is loaded in Missive
+  Missive.on('change:conversations', (ids) => {
+    reset();
+    Missive.fetchConversations(ids, ['latest_message']).then((conversations) => {
+      if (conversations.length !== 1) {
+        // Do nothing if multiple conversations are selected.
+        return;
+      }
+      message = conversations[0].latest_message;
+    });
+  });
+
+  function showError(msg) {
+    $('#error').html(msg);
+  }
+
+  $("#btn-translate").click(function () {
+    $("#btn-translate").html(strTranslating);
+    var url = "https://translation.googleapis.com/language/translate/v2?key=" + apiKey;
+    url += "&source=" + langSource;
+    url += "&target=" + langTarget;
+
+    var body = url + "&q=" + encodeURIComponent(message.body);
+    var subject = url + "&q=" + encodeURIComponent(message.subject);
+
+    translate(body, "#message", true);
+    translate(subject, "#subject");
+  });
+
+  // fn to get text from html, preserving line breaks etc
+  (function($) {
+    $.fn.innerText = function(msg) {
+      if (msg) {
+        if (document.body.innerText) {
+          for (var i in this) {
+            this[i].innerText = msg;
+          }
+        } else {
+          for (var i in this) {
+            this[i].innerHTML.replace(/&amp;lt;br&amp;gt;/gi,"n").replace(/(&amp;lt;([^&amp;gt;]+)&amp;gt;)/gi, "");
+          }
+        }
+        return this;
+      } else {
+        if (document.body.innerText) {
+          return this[0].innerText;
+        } else {
+          return this[0].innerHTML.replace(/&amp;lt;br&amp;gt;/gi,"n").replace(/(&amp;lt;([^&amp;gt;]+)&amp;gt;)/gi, "");
+        }
+      }
+    };
+  })(jQuery);
+
+  $("#btn-conversation").click(function () {
+    var comment = '*' + $("#subject").innerText() + '*\n\n' + $("#message").innerText();
+    Missive.comment( comment );
+  });
+
+  $("#btn-reply").click(function () {
+    var url = 'https://translate.google.com/#view=home&op=translate&sl=' + langTarget + '&tl=' + langDetected;
+    window.open(url);
+  });
+
+  function translate(url, target, detectLang) {
+    $("#translated").show();
+    $("#translate").hide();
+
+    $.get(url, function (data, status) {
+      if (detectLang) {
+        langDetected = data.data.translations[0].detectedSourceLanguage;
+      }
+      $(target).html(data.data.translations[0].translatedText);
+      if (langDetected) {
+        var lang = languages.find(languages => languages.language === langDetected).name;
+        $('#lang').html('<span id="language">' + lang + '</span>');
+      }
+    });
+  }
+
+  function getAllLanguages() {
+    var url = "https://translation.googleapis.com/language/translate/v2/languages?key=" + apiKey;
+    url += "&target=" + langTarget;
+    $.get(url, function (data, status) {
+      languages = data.data.languages;
+    });
+  }
+
+  function reset() {
+    $("#btn-translate").html(strTranslate);
+    $("#btn-conversation").html(strConversation);
+    $("#btn-reply").html(strReply);
+    $("#subject").html(strLoading);
+    $('#lang').html('');
+    $("#message").html(strLoading);
+    $("#btn-translate").html(strTranslate);
+    $("#translated").hide();
+    $("#translate").show();
+    langDetected = false;
+  }
+
+  // apply the strings to labels etc
+  reset();
+
+  // get a list of all language names if the target translation is not English
+  // i.e. the current Missive user is not an English speaker
+  if (langTarget != 'en') {
+    getAllLanguages();
+  }
+</script>
+
+</body>
+
+</html>
